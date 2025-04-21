@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
-import { useCallback } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +7,8 @@ import FoodScreen from './FoodScreen';
 import SearchScreen from './SearchScreen';
 import ProfileScreen from './ProfileScreen';
 import { useUser } from '../UserContext';
+import { Database } from '../Database';
+import { useFocusEffect } from '@react-navigation/native';
 
 const Tab = createBottomTabNavigator();
 
@@ -16,16 +16,59 @@ function HomeScreen({ route }) {
   const { username } = useUser(); // ✅ ใช้จาก context
   const [selected, setSelected] = useState('Weekly');
   const [showOptions, setShowOptions] = useState(false);
-  const [calories, setCalories] = useState(0);
+  const [dailyCalories, setDailyCalories] = useState(0);
+  const [weeklyCalories, setWeeklyCalories] = useState(0);
 
+  useEffect(() => {
+    if (username) {
+      fetchCalories();
+    }
+  }, [username]);
   useFocusEffect(
-    useCallback(() => {
-      const incomingCalories = route.params?.calories;
-      if (incomingCalories) {
-        setCalories((prev) => prev + incomingCalories);
+    React.useCallback(() => {
+      if (username) {
+        fetchCalories();
       }
-    }, [route.params?.calories])
+    }, [username])
   );
+
+  const fetchCalories = async () => {
+    const { data, error } = await Database
+      .from('caltrack')
+      .select('calories, caldate')
+      .eq('username', username);
+  
+    if (error) {
+      console.error('Error fetching calories:', error.message);
+      return;
+    }
+  
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const weekAgo = new Date(today);
+    weekAgo.setDate(today.getDate() - 6);
+  
+    let daily = 0;
+    let weekly = 0;
+  
+    data.forEach(entry => {
+      const entryDate = new Date(entry.caldate);
+      const entryStr = entryDate.toISOString().split('T')[0];
+  
+      // เช็ค Daily
+      if (entryStr === todayStr) {
+        daily += entry.calories;
+      }
+  
+      // เช็ค Weekly
+      if (entryDate >= weekAgo && entryDate <= today) {
+        weekly += entry.calories;
+      }
+    });
+  
+    setDailyCalories(daily);
+    setWeeklyCalories(weekly);
+  };
 
   const toggleOptions = () => setShowOptions(!showOptions);
   const selectOption = (option) => {
@@ -61,11 +104,11 @@ function HomeScreen({ route }) {
         <View style={styles.graphPlaceholder}>
           {selected === 'Weekly' ? (
             <Text style={{ color: '#333', fontWeight: 'bold' }}>
-              Weekly Calories Burned: {calories} kcal
+              Weekly Calories Burned: {weeklyCalories} kcal
             </Text>
           ) : (
             <Text style={{ color: '#333', fontWeight: 'bold' }}>
-              Today's Calories Burned: {calories} kcal
+              Today's Calories Burned: {dailyCalories} kcal
             </Text>
           )}
         </View>

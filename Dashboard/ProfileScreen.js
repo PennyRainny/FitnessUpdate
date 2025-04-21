@@ -58,7 +58,7 @@ export default function ProfileScreen({ navigation }) {
       {/* User Info */}
       <View style={styles.profileContainer}>
         <Image source={require('../assets/avatar.png')} style={styles.avatar} />
-        <Text style={styles.name}>User</Text>
+        <Text style={styles.name}>{username || 'Guest'}</Text> 
         <Text style={styles.sub}>Lose a Fat Program</Text>
       </View>
 

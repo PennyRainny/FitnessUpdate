@@ -2,10 +2,30 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Database } from '../Database';
+import { useUser } from '../UserContext';
 
 export default function NextScreen4({ navigation }) {
   const [count, setCount] = useState(60);
   const animatedValue = new Animated.Value(0);
+  const { username } = useUser();
+
+  const addCaloriesToDB = async () => {
+    if (!username) return;
+
+    const { error } = await Database
+      .from('caltrack')
+      .insert([
+        {
+          username: username, // ✅ ใช้ username ตรงๆ จาก Context
+          calories: 350
+        }
+      ]);
+
+    if (error) {
+      console.error('Error adding calories:', error.message);
+    }
+  };
 
   useEffect(() => {
     if (count > 0) {
@@ -15,7 +35,8 @@ export default function NextScreen4({ navigation }) {
 
       return () => clearInterval(interval);
     } else {
-      navigation.navigate('Home', { calories: 350 });
+      addCaloriesToDB();
+      navigation.replace('Home');
     }
   }, [count]);
 
